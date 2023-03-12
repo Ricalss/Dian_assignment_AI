@@ -17,9 +17,9 @@ def load_mnist(root ='./Dian2023/MNIST_data/', n_samples=int(6e4)):
     rows = 28
     cols = 28
     with open(root + 'train-images.idx3-ubyte', 'rb') as imagepath:
-        images_train = torch.tensor(np.fromfile(imagepath, dtype=np.uint8).reshape(60000,dtype = torch.float))
+        images_train = torch.tensor(np.fromfile(imagepath, dtype=np.uint8).reshape(60000,rows*cols),dtype = torch.float)
     with open(root + 'train-images.idx3-ubyte', 'rb') as imagepath:
-        images_test = torch.tensor(np.fromfile(imagepath, dtype=np.uint8).reshape(10000,dtype = torch.float))
+        images_test = torch.tensor(np.fromfile(imagepath, dtype=np.uint8).reshape(10000,rows*cols),dtype = torch.float)
     return (images_train, labels_train, images_test, labels_test, rows*cols)
 #损失函数 交叉熵 下使用torch.CrossEntropyLoss()
 criterion = torch.nn.CrossEntropyLoss()  
