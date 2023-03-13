@@ -22,13 +22,13 @@ class CNN(nn.Module):
     def forward(self,x):
         x=self.layer1(x)
         x=self.layer2(x)
-        #x = x.view(x.size(0), -1)  # TODO what
+        x = x.view(x.size(0), -1)  
         x=self.layer3(x)
         return x
 
 #超参数
 num_epochs = 5
-BATCH_SIZE = 256
+BATCH_SIZE = 100
 learning_rate = 0.001
 moment = 0
 
@@ -70,16 +70,16 @@ for epoch in range(num_epochs):
  
         #每执行50次，输出一下当前epoch、loss、accuracy
         if(step+1) % 100 == 0:
-            print('Epoch [%d/%d], Iter[%d/%d] Loss: %.4f' %(epoch+1, num_epochs, +1, len(train_data)/BATCH_SIZE, loss.item()))
+            print('Epoch [%d/%d], Iter[%d/%d] Loss: %.4f' %(epoch+1, num_epochs, step+1, len(train_data)/BATCH_SIZE, loss.item()))
 
 model.eval()  #Change model to 'eval' mode (BN uses moving mean/var).
 correct = 0
 total = 0
 for images, labels in test_loader:
-    images = Variable(images)
+    images = Variable(images).cuda()
     outputs = model(images)
-    predicted = torch.max(outputs.data, 1)  #按照维度取最大值，返回每一行中最大的元素，且返回索引
-    total += labels.size()         #labels.size(0) = 100 = batch_size
+    _, predicted = torch.max(outputs.data, 1)  #按照维度取最大值，返回每一行中最大的元素，且返回索引
+    total += labels.size(0)         #labels.size(0) = 100 = batch_size
     correct += (predicted.cpu() == labels).sum()  #计算每次批量处理后，100个测试图像中有多少个预测正确，求和加入correct
        
 print('Test accuracy of the model on the 10000 test images: %d %%' %(100 * correct/total))
