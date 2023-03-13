@@ -10,8 +10,8 @@ class CNN(nn.Module):
         super(CNN, self).__init__()
         self.layer1 = nn.Sequential(
             nn.Conv2d(in_channels=1, out_channels=16, kernel_size=5, stride=1,padding=2), #卷积层（输入通道数，卷积核个数，卷积核尺寸，卷积核步长,外延填充数）
-            nn.BatchNorm2d(16),             #对这16个结果进行规范处理,卷积网络中(防止梯度消失或爆炸)，设置的参数就是卷积的输出通道数
-            nn.ReLU(),    #激活函数
+            nn.BatchNorm2d(16),       #对这16个结果进行规范处理,卷积网络中(防止梯度消失或爆炸)，设置的参数就是卷积的输出通道数
+            nn.ReLU(),       #激活函数
             nn.MaxPool2d(2))
         self.layer2 = nn.Sequential(
             nn.Conv2d(in_channels=16, out_channels=32, kernel_size=5, padding=2),
@@ -22,13 +22,13 @@ class CNN(nn.Module):
     def forward(self,x):
         x=self.layer1(x)
         x=self.layer2(x)
-        x = x.view(x.size(0), -1)  # TODO what
+        #x = x.view(x.size(0), -1)  # TODO what
         x=self.layer3(x)
         return x
 
 #超参数
 num_epochs = 5
-BATCH_SIZE = 128
+BATCH_SIZE = 256
 learning_rate = 0.001
 moment = 0
 
@@ -52,7 +52,7 @@ model.cuda()
 #损失函数 交叉熵 
 Lossfunc = nn.CrossEntropyLoss()  
 #优化函数有Adam和SGD
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) 
+optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate) 
 
 #开始训练模型
 for epoch in range(num_epochs):
