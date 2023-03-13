@@ -9,30 +9,32 @@ import torch.nn.functional as F
 from nn.function import *
 import nn
 
-
+#命令行工具
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('tests', nargs='*')
     return parser.parse_args()
 
-
+#返回n个N分布的整数，介于a-b
 def randnint(n, a=8, b=16):
     """Return N random integers."""
     return (random.randint(a, b) for _ in range(n))
 
-
+#"partial" 是 Python 中的一个内置函数，在 "functools" 模块中可用。它可以用来固定一个函数的部分参数，并返回一个新的函数，该函数可以被调用并使用剩余的参数。
+#isclose判断数据是否相近rtol相对误差，atol绝对误差
 isclose = functools.partial(np.isclose, rtol=1.e-5, atol=1.e-5)
 
-
+#是为后续三个test类的父类，提供一些基本测试功能
 class TestBase(object):
     def __init__(self, module, input_shape, module_params=None):
         self.module = module.split('.')[-1]
         module_params = module_params.split(',') \
                         if module_params is not None else []
         input_shape = input_shape.split('x')
-        keys = set(module_params + input_shape)
-        args = {k: v for k, v in zip(keys, randnint(len(keys)))}#随机维度
+        keys = set(module_params + input_shape)#集合
+        args = {k: v for k, v in zip(keys, randnint(len(keys)))}#随机维度，字典 zip打包成列表，每个元素都包含元组，元组包含传递的可迭代参数
         args = {"W":4,"Cp":5,"B":2,"H":4,"C":3,"k_s":2,"L":5}#给定维度
+        #args生成随机字典，但是第二行要求某些索引取特定值
         self.nnt = 0.9*torch.rand(tuple(args[k] for k in input_shape))+0.1#放缩产生随机数的范围
         self.ptt = self.nnt.clone().detach()
         self.ptt.requires_grad = True
@@ -77,7 +79,7 @@ class TestBase(object):
 
 class Conv2dTest(TestBase):
     def __init__(self):
-        super().__init__('Conv2d', input_shape='BxCxHxW', module_params='C,Cp,k_s')
+        super().__init__('Conv2d', input_shape='BxCxHxW', module_params='C,Cp,k_s')#调用父类初始化函数初始化类
 
     def forward_test(self):
 
@@ -161,5 +163,5 @@ if __name__ == "__main__":
     for a in test_list:
         print("Test",a.module)
         print("forward:",a.forward_test())
-        # print("backword:",a.backward_test())
+        # print("backward:",a.backward_test())
 
