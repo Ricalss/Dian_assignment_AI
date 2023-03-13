@@ -39,19 +39,19 @@ train_loader=Data.DataLoader(dataset=train_data, batch_size=BATCH_SIZE, shuffle=
 
 test_data=torchvision.datasets.MNIST(root='./mnist', train=False,transform=transforms.ToTensor())
 test_loader = torch.utils.data.DataLoader(dataset=test_data, batch_size=1, shuffle=False)
-"""with torch.no_grad(): #取消计算图，避免内存消耗
+"""with torch.no_grad(): #取消计算图，避免内存消耗，但是不方便模块化管理
     images_test=Variable(torch.unsqueeze(test_data.data, dim=1)).type(torch.FloatTensor)[:]/255   
     labels_test=test_data.targets[:]"""
 
 
 
-#实例化CNN模型
+#实例化CNN模型，并且将模型导入到cuda核心中
 model = CNN()
 model.cuda()
 
 #损失函数 交叉熵 
 Lossfunc = nn.CrossEntropyLoss()  
-#优化函数有Adam和SGD
+#优化函数有Adam和SGD，这里选择SGD
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate) 
 
 #开始训练模型
