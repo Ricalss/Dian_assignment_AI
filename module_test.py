@@ -20,7 +20,7 @@ def randnint(n, a=8, b=16):
     """Return N random integers."""
     return (random.randint(a, b) for _ in range(n))
 
-#"partial" 是 Python 中的一个内置函数，在 "functools" 模块中可用。它可以用来固定一个函数的部分参数，并返回一个新的函数，该函数可以被调用并使用剩余的参数。
+#"partial" 在 "functools" 模块中，可以用来固定一个函数的部分参数，并返回一个新的函数，该函数可以被调用并使用剩余的参数。
 #isclose判断数据是否相近rtol相对误差，atol绝对误差
 isclose = functools.partial(np.isclose, rtol=1.e-5, atol=1.e-5)
 
@@ -32,23 +32,21 @@ class TestBase(object):
                         if module_params is not None else []
         input_shape = input_shape.split('x')
         keys = set(module_params + input_shape)#集合
-        args = {k: v for k, v in zip(keys, randnint(len(keys)))}#随机维度，字典 zip打包成列表，每个元素都包含元组，元组包含传递的可迭代参数
+        args = {k: v for k, v in zip(keys, randnint(len(keys)))}#随机维度， zip打包成列表，每个元素是元组，元组包含传递的可迭代参数
         args = {"W":4,"Cp":5,"B":2,"H":4,"C":3,"k_s":2,"L":5}#给定维度
-        #args生成随机字典，但是第二行要求某些索引取特定值
-        self.nnt = 0.9*torch.rand(tuple(args[k] for k in input_shape))+0.1#放缩产生随机数的范围
-        self.ptt = self.nnt.clone().detach()
-        self.ptt.requires_grad = True
-        self.nnt.requires_grad = True
+        self.nnt = 0.9*torch.rand(tuple(args[k] for k in input_shape))+0.1#放缩产生随机数的范围，
+        self.ptt = self.nnt.clone().detach()#detach从当前计算图中分离下来的；深拷贝但是无梯度
+        self.ptt.requires_grad = True 
+        self.nnt.requires_grad = True 
         self.nnm = getattr(nn.function,module)(*tuple(args[k] for k in module_params))
-
     def forward_test(self):
-        # self.pt_out = ...
-        self.nn_out = self.nnm(self.nnt)
+        # self.pt_out = ... 在子类定义的同名函数中，输出是为pytorch输出
+        self.nn_out = self.nnm(self.nnt) #得到nn/function中定义的输出
         if self.nn_out is None:
             print('your forward output is empty')
             return False
         res = isclose(self.nn_out.cpu().detach().numpy(),
-                       self.pt_out.cpu().detach().numpy()).all().item()
+                       self.pt_out.cpu().detach().numpy()).all().item()#比较
         if res :
             return True
         else:
@@ -83,10 +81,11 @@ class Conv2dTest(TestBase):
 
     def forward_test(self):
 
-        self.pt_wgt = torch.Tensor(self.nnm.weight.data)
+        self.pt_wgt = torch.Tensor(self.nnm.weight.data) #提取自定义的卷积层随机初始化的数据
         self.pt_wgt.requires_grad = True
         self.pt_bias = torch.Tensor(self.nnm.bias.data)
         self.pt_bias.requires_grad = True
+        #得到pytorch计算结果
         self.pt_out = F.conv2d(input=self.ptt, weight=self.pt_wgt,
                                bias=self.pt_bias,stride=1,padding=0)
         return super().forward_test()
@@ -157,11 +156,16 @@ class CrossEntropyTest(TestBase):
             print("pytorch result:",self.ptt.grad.detach().numpy())
             print("your result:",self.nn_grad.detach().numpy())
             return False
-
 if __name__ == "__main__":
-    test_list = [CrossEntropyTest(),LinearTest(),Conv2dTest()]
+    test_list = [Conv2dTest()]
     for a in test_list:
         print("Test",a.module)
         print("forward:",a.forward_test())
         # print("backward:",a.backward_test())
+'''if __name__ == "__main__":
+    test_list = [CrossEntropyTest(),LinearTest(),Conv2dTest()]
+    for a in test_list:
+        print("Test",a.module)
+        print("forward:",a.forward_test())
+        # print("backward:",a.backward_test())'''
 
