@@ -157,7 +157,7 @@ class CrossEntropyTest(TestBase):
             print("your result:",self.nn_grad.detach().numpy())
             return False
 if __name__ == "__main__":
-    test_list = [Conv2dTest()]
+    test_list = [Conv2dTest(),LinearTest()]
     for a in test_list:
         print("Test",a.module)
         print("forward:",a.forward_test())
