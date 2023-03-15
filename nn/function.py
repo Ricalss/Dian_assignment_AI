@@ -1,7 +1,7 @@
 from typing import Union
 from certifi import where
 from numpy import arange
-from torch import Tensor, log
+from torch import Tensor, log, rand
 from torch.nn.modules import Module
 from torch.nn.parameter import Parameter
 import torch
@@ -38,11 +38,16 @@ class Conv2d(_ConvNd):
     def conv2d(self, input, kernel, bias = 0, stride=1, padding=0):
         '''TODO forword的计算方法''' 
         #-----------------------------------------------------------------------------------------------------------------
+        self.input =input
+        self.input.requires_grad = True #保存input，并且开辟梯度空间，后续尝试是否能去掉。外部已经定义
         # padding to be finished
         
+        
+        self.inputp =input#获得padding后的输入张量，为weight和bias的backward准备
+
         #实现卷积
         dim2 = int((input.size(2)+2*padding-kernel.size(2))/stride+1)
-        dim3 = int((input.size(2)+2*padding-kernel.size(2))/stride+1)
+        dim3 = int((input.size(3)+2*padding-kernel.size(3))/stride+1)
         ks =kernel.size(2)
         self.output = torch.zeros(input.size(0), self.out_channels,dim2,dim3)
         
@@ -51,6 +56,7 @@ class Conv2d(_ConvNd):
                 for X2 in range(dim2):
                     for X3 in range(dim3):
                         self.output[X0][X1][X2][X3]=(input[X0][:,X2:X2+ks,X3:X3+ks]*kernel[X1]).sum()+bias[X1]
+        print(self.input.grad)
         #------------------------------------------------------------------------------------------------------------------
         return self.output
     
@@ -61,6 +67,31 @@ class Conv2d(_ConvNd):
     
     def backward(self, ones: Tensor):
         '''TODO backward的计算方法''' 
+        #-------------------------------------------------------------------------------------------------------------------
+        #ones  self   self.weight  self.bias
+        #在forward中储存input数据为self.input,因为反向传播计算weight的梯度需要
+        for i in range(self.bias.size(0)):#
+            _sum =0.
+            self.bias.grad[i] = _sum
+            for bs in ones.size(0):
+                for j in range(ones.size(2)):
+                    for k in range(ones.size(3)):
+                        _sum += ones[bs][i][j][k]
+        #weight.backward
+        dim2 = int((input.size(2)-self.weight.size(2))/self.stride+1)
+        dim3 = int((input.size(2)-self.weight.size(3))/self.stride+1)
+        for bs in range(ones.size(0)):
+            for kn in range(self.weight.size(0)):
+                for ch in range(self.weight.size(1)):
+                    for i in range(self.weight.size(2)):
+                        for j in range(self.weight.size(3)):
+                            self.weight.grad[kn][ch][i][j] =sum(\
+                                self.input[bs][ch][i][j]*ones[bs][kn][ii][jj]\
+                                    for ii in range(0,dim2,self.stride) for jj in range(0,dim3,self.stride))
+    
+        #input.backward to be finished
+        
+        #-------------------------------------------------------------------------------------------------------------------
         return self.input.grad
     
 class Linear(Module):
