@@ -1,6 +1,7 @@
 from typing import Union
 from certifi import where
-from torch import Tensor
+from numpy import arange
+from torch import Tensor, log
 from torch.nn.modules import Module
 from torch.nn.parameter import Parameter
 import torch
@@ -21,7 +22,7 @@ class Conv2d(_ConvNd):
         dilation: _size_2_t = 1,
         groups: int = 1,
         bias: bool = True,
-        padding_mode: str = 'zeros',  # TODO: refine this type
+        padding_mode: str = 'zeros',  # TODO: refine this type "zeros"表示边缘填充0
         device=None,
         dtype=None
     ):
@@ -77,13 +78,19 @@ class Linear(Module):
         
         self.weight = Parameter(torch.empty((out_features, in_features), **factory_kwargs))#随机weight
         if bias:
-            self.bias = Parameter(torch.empty(out_features, **factory_kwargs))
+            self.bias = Parameter(torch.empty(out_features, **factory_kwargs))# 返回未初始化数据的张量
             
             
     def forward(self, input):
         '''TODO'''
         #-----------------------------------------------------------------------------------------
         self.output = torch.matmul(input,self.weight.T)
+        if type(self.bias) ==bool :
+            pass
+        else:
+            for i in arange(self.output.size(0)):
+                self.output[i] =self.output[i] + self.bias
+            
         #-----------------------------------------------------------------------------------------
         return self.output
     def backward(self, ones: Tensor):
@@ -95,6 +102,23 @@ class CrossEntropyLoss():
         pass
     def __call__(self, input, target):
         '''TODO'''
+        #---------------------------------------------------------------------
+        #NLLloss+log+softmax
+        batch_size = target.size(0)
+        #softmax
+        _input = torch.zeros((input.size(0),input.size(1)))
+        for i in range(input.size(0)):
+            sum_p =sum(torch.exp(input[i][z])for z in range(input.size(1)))
+            for j in range(input.size(1)):
+                _input[i] = (torch.exp(input[i])) /sum_p
+        #log()
+        _input =torch.log(_input)
+        #NLLloss
+        self.output = 0.
+        for j in range(batch_size):
+            self.output += -_input[j][target[j]]
+        self.output =self.output / batch_size
+        #---------------------------------------------------------------------
         return self.output
     def backward(self):
         '''TODO'''

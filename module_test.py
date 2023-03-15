@@ -156,16 +156,11 @@ class CrossEntropyTest(TestBase):
             print("pytorch result:",self.ptt.grad.detach().numpy())
             print("your result:",self.nn_grad.detach().numpy())
             return False
+
 if __name__ == "__main__":
-    test_list = [Conv2dTest(),LinearTest()]
-    for a in test_list:
-        print("Test",a.module)
-        print("forward:",a.forward_test())
-        # print("backward:",a.backward_test())
-'''if __name__ == "__main__":
     test_list = [CrossEntropyTest(),LinearTest(),Conv2dTest()]
     for a in test_list:
         print("Test",a.module)
         print("forward:",a.forward_test())
-        # print("backward:",a.backward_test())'''
+        # print("backward:",a.backward_test())
 
