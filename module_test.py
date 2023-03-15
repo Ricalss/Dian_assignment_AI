@@ -57,7 +57,7 @@ class TestBase(object):
         
     def backward_test(self):
         self.pt_out.sum().backward()#pytorch求loss需要收敛到一个值所以这里做一个求和
-        self.pt_grad = self.ptt.grad
+        self.pt_grad = self.ptt.grad  #传入torch计算的梯度
         if self.nn_out is None:
             print("your backward output is empty")
             return False
@@ -158,9 +158,9 @@ class CrossEntropyTest(TestBase):
             return False
 
 if __name__ == "__main__":
-    test_list = [CrossEntropyTest(),LinearTest(),Conv2dTest()]
+    test_list = [Conv2dTest(),LinearTest(),CrossEntropyTest()]
     for a in test_list:
         print("Test",a.module)
         print("forward:",a.forward_test())
-        # print("backward:",a.backward_test())
+        #print("backward:",a.backward_test())
 

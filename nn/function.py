@@ -50,7 +50,7 @@ class Conv2d(_ConvNd):
             for X1 in range(kernel.size(0)):
                 for X2 in range(dim2):
                     for X3 in range(dim3):
-                        self.output[X0][X1][X2][X3]=torch.sum(input[X0][:,X2:X2+ks,X3:X3+ks]*kernel[X1])+bias[X1]
+                        self.output[X0][X1][X2][X3]=(input[X0][:,X2:X2+ks,X3:X3+ks]*kernel[X1]).sum()+bias[X1]
         #------------------------------------------------------------------------------------------------------------------
         return self.output
     
@@ -84,7 +84,12 @@ class Linear(Module):
     def forward(self, input):
         '''TODO'''
         #-----------------------------------------------------------------------------------------
-        self.output = torch.matmul(input,self.weight.T)
+        self.output = torch.zeros(input.size(0),self.weight.size(0))
+        for i in range(input.size(0)):
+            for j in range(self.weight.size(0)):
+                self.output[i][j] = sum((self.weight[j][k]*input[i][k]for k in range(self.weight.size(1))))
+    
+        #添加bias值
         if type(self.bias) ==bool :
             pass
         else:
@@ -112,7 +117,7 @@ class CrossEntropyLoss():
             for j in range(input.size(1)):
                 _input[i] = (torch.exp(input[i])) /sum_p
         #log()
-        _input =torch.log(_input)
+        _input =log(_input)
         #NLLloss
         self.output = 0.
         for j in range(batch_size):
