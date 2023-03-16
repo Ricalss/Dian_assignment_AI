@@ -35,7 +35,7 @@ class TestBase(object):
         args = {k: v for k, v in zip(keys, randnint(len(keys)))}#随机维度， zip打包成列表，每个元素是元组，元组包含传递的可迭代参数
         args['k_s']=3
         #args['L'],args['B']=8 ,13
-        args = {'k_s': 3, 'B': 8, 'Cp': 16, 'H': 15, 'C': 9, 'W': 13}#给定维度原：{"W":4,"Cp":5,"B":2,"H":4,"C":3,"k_s":2,"L":5},L为线性层输入
+        #args = {'k_s': 3, 'B': 8, 'Cp': 16, 'H': 15, 'C': 9, 'W': 13}#给定维度原：{"W":4,"Cp":5,"B":2,"H":4,"C":3,"k_s":2,"L":5},L为线性层输入
         print(module,args)
         self.nnt = 0.9*torch.rand(tuple(args[k] for k in input_shape))+0.1#放缩产生随机数的范围，
         self.ptt = self.nnt.clone().detach()#detach从当前计算图中分离下来的；深拷贝但是无梯度
@@ -166,4 +166,3 @@ if __name__ == "__main__":
         print("Test",a.module)
         print("forward:",a.forward_test())
         print("backward:",a.backward_test())
-
