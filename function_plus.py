@@ -66,10 +66,9 @@ class Linear(Module):
             
     def forward(self, input):
         '''TODO'''
-        #input (bs,inp)  self.weight()
+        #input (bs,inp)  self.weight(inp,outp)
         #------------------------------------------------------------------------------------------------------
-        self.output = 
-        
+        self.output =torch.mul(input,self.weight)
         #------------------------------------------------------------------------------------------------------
         return self.output
     def backward(self, ones: Tensor):
