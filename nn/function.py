@@ -193,7 +193,7 @@ class CrossEntropyLoss():
             for j in range(input.size(1)):
                 _input[i] = (torch.exp(input[i])) /sum_p
                 
-        self._input = _input   #保存数据用于后续backward计算，是为一维
+        self.SMoutput = _input   #保存数据用于后续backward计算，是为一维
         
         #log()
         _input =log(_input)
@@ -209,9 +209,11 @@ class CrossEntropyLoss():
         #--------------------------------------------------------------------------------------------------
         self.input.grad=torch.zeros_like(self.input)
         #NLLloss+log().backward
-        _input = torch.zeros_like(self._input)#一维
+        _input = torch.zeros(self.input.size(1))
         for i in range(self.input.size(0)):
-            _input[i] = (1/self.input[i])*(-1/self._input.size(0))
+            for j in range (self.input.size(1)): 
+                if j ==self.target[i]:
+                    _input[i] = (1/self.SMoutput[i][j])*(-1/self.input.size(0))
         #softmax.backward
         for bs in range(self.input.size(0)):
             mol1 =torch.exp(self.input[bs][self.target[bs]]).item()#分子1
