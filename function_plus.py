@@ -68,11 +68,20 @@ class Linear(Module):
         '''TODO'''
         #input (bs,inp)  self.weight(inp,outp)
         #------------------------------------------------------------------------------------------------------
-        self.output =torch.mul(input,self.weight)
+        self.input = input
+        self.output = torch.mul(input,self.weight)
         #------------------------------------------------------------------------------------------------------
         return self.output
     def backward(self, ones: Tensor):
         '''TODO'''
+        #input (bs,inp)  self.weight(inp,outp)  ones = self.output(bs,outp)
+        #------------------------------------------------------------------------------------------------------
+        bs, inp = self.input.size(0), self.input.size(0)  
+        outp = self.weight.size(1)
+        #input.backward
+        self.input.grad = torch.ones(bs, inp)
+        
+        #------------------------------------------------------------------------------------------------------
         return self.input.grad
 
 class CrossEntropyLoss():
@@ -80,8 +89,26 @@ class CrossEntropyLoss():
         pass
     def __call__(self, input, target):
         '''TODO'''
+        #------------------------------------------------------------------------------------------------------
+        self.input = input
+        self.target = target
+        
+        #-log(softmax)  input(bs, tars) ---> output1(bs, tars)
+        output1 = -torch.log(torch.exp(input)/sum(torch.exp(input)))
+        
+        #NLLloss output1(bs,tars) ---> self.output = scalar
+        self.Bs = output1.size(0)
+        self.output = sum(output1[bs][target[bs]]for bs in range(self.Bs)) / self.Bs
+        
+        #------------------------------------------------------------------------------------------------------
         return self.output
     def backward(self):
         '''TODO'''
+        #------------------------------------------------------------------------------------------------------
+        
+        
+        
+        
+        #------------------------------------------------------------------------------------------------------
         return self.input.grad
         
