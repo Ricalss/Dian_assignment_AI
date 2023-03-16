@@ -39,30 +39,44 @@ class Conv2d(_ConvNd):
         '''TODO forword的计算方法''' 
         #-----------------------------------------------------------------------------------------------------------------
         self.input =input
-        self.input.requires_grad = True #保存input，并且开辟梯度空间，后续尝试是否能去掉。外部已经定义
-        # padding to be finished
-        
-        
-        self.inputp =input#获得padding后的输入张量，为weight和bias的backward准备
+        #self.input.requires_grad = True #保存input，并且开辟梯度空间，后续尝试是否能去掉。外部已经定义
+        # padding 
+        pi=self.padding[0]
+        pj=self.padding[1]
+        if pi == 0 and pj == 0:
+            pass
+        else:
+            _input = torch.zeros(input.size(0),input.size(1),input.size(2)+2*pi,input.size(3)+2*pj)
+            for bs in range(input.size(0)):
+                for ch in range(input.size(1)):
+                    for i in range(input.size(2)):
+                        for j in range(input.size(3)):
+                            if i-pi>=0 or i < _input.size(2)-pi\
+                                or j-pj>=0 or j < _input.size(3)-pj:
+                                    _input[bs][ch][i][j]=input[bs][ch][i-pi][j-pj]
+            input = _input
+        self.inputp =input     #获得padding后的输入张量，为weight和bias的backward准备
 
         #实现卷积
-        dim2 = int((input.size(2)+2*padding-kernel.size(2))/stride+1)
-        dim3 = int((input.size(3)+2*padding-kernel.size(3))/stride+1)
+        dim2 = int((self.input.size(2)+2*padding[0]-kernel.size(2))/stride[0]+1)
+        dim3 = int((self.input.size(3)+2*padding[1]-kernel.size(3))/stride[1]+1)
         ks =kernel.size(2)
         self.output = torch.zeros(input.size(0), self.out_channels,dim2,dim3)
-        
         for X0 in range(input.size(0)):
             for X1 in range(kernel.size(0)):
                 for X2 in range(dim2):
                     for X3 in range(dim3):
-                        self.output[X0][X1][X2][X3]=(input[X0][:,X2:X2+ks,X3:X3+ks]*kernel[X1]).sum()+bias[X1]
+                        self.output[X0][X1][X2][X3]=(input[X0][:,X2:X2+ks,X3:X3+ks]*kernel[X1]).sum().item()+bias[X1]
+
         #------------------------------------------------------------------------------------------------------------------
         return self.output
     
     def forward(self, input: Tensor):
         weight = self.weight
         bias = self.bias
-        return self.conv2d(input, weight, bias)
+        padding =self.padding
+        stride =self.stride
+        return self.conv2d(input, weight, bias, stride, padding)
     
     def backward(self, ones: Tensor):
         '''TODO backward的计算方法''' 
@@ -70,7 +84,7 @@ class Conv2d(_ConvNd):
         #ones  self   self.weight  self.bias
         #在forward中储存input数据为self.input,因为反向传播计算weight的梯度需要
         #bias.backward
-        self.bias.requires_grad = True
+        #self.bias.requires_grad = True
         self.bias.grad=torch.zeros(self.bias.size(0))
         for i in range(self.bias.size(0)):#
             _sum =0.
@@ -80,20 +94,26 @@ class Conv2d(_ConvNd):
                         _sum += ones[bs][i][j][k]
             self.bias.grad[i] = _sum
         #weight.backward
-        self.weight.requires_grad = True
+        #self.weight.requires_grad = True
         self.weight.grad=torch.zeros(self.weight.size(0),self.weight.size(1),self.weight.size(2),self.weight.size(3))
         idim2 = ones.size(2)
         idim3 = ones.size(3)
         for kn in range(self.weight.size(0)):
             for ch in range(self.weight.size(1)):
                 for i in range(self.weight.size(2)):
-                    for j in range(self.weight.size(3)):
-                        self.weight.grad[kn][ch][i][j] =sum(\
-                            self.inputp[bs][ch][ii*self.stride[0]+i][jj*self.stride[1]+j]*ones[bs][kn][ii][jj]\
-                                for bs in range(ones.size(0))for ii in range(idim2) for jj in range(idim3))
+                    for j in range(self.weight.size(3)):#self.inputp是padding后的tensor
+                        #self.weight.grad[kn][ch][i][j] =sum(\
+                         #   self.inputp[bs][ch][ii*self.stride[0]+i][jj*self.stride[1]+j]*ones[bs][kn][ii][jj]\
+                          #      for bs in range(ones.size(0))for ii in range(idim2) for jj in range(idim3))
+                        _sum =0.
+                        for bs in range(ones.size(0)):
+                            for ii in range(idim2):
+                                for jj in range(idim3):
+                                    _sum +=self.inputp[bs][ch][ii*self.stride[0]+i][jj*self.stride[1]+j]*ones[bs][kn][ii][jj]
+                        self.weight.grad[kn][ch][i][j] = _sum
     
         #input.backward to be finished
-        self.input.requires_grad =True
+        #self.input.requires_grad =True
         self.input.grad = torch.zeros(self.input.size(0),self.input.size(1),self.input.size(2),self.input.size(3))
         for bs in range(self.input.size(0)):
             for ch in range(self.input.size(1)):
@@ -136,7 +156,7 @@ class Linear(Module):
         '''TODO'''
         #-----------------------------------------------------------------------------------------
         self.input = input
-        self.input.requires_grad = True #保存input，并且开辟梯度空间
+        #self.input.requires_grad = True #保存input，并且开辟梯度空间
         self.output = torch.zeros(input.size(0),self.weight.size(0))
         for i in range(input.size(0)):
             for j in range(self.weight.size(0)):
@@ -155,18 +175,18 @@ class Linear(Module):
         '''TODO'''
         #-------------------------------------------------------------------------------------------------------------------
         #bias.backward
-        self.bias.requires_grad = True
+        #self.bias.requires_grad = True
         self.bias.grad=torch.zeros(self.bias.size(0))
         for i in range(self.bias.size(0)):
             self.bias.grad[i]=sum(ones[bs][i]for bs in range(ones.size(0)))
         #weight.backward
-        self.weight.requires_grad = True
+        #self.weight.requires_grad = True
         self.weight.grad=torch.zeros(self.weight.size(0),self.weight.size(1))
         for out in range(self.weight.size(0)):
             for i in range(self.weight.size(1)):
                 self.weight.grad[out][i]=sum(self.input[bs][i]*ones[bs][out] for bs in range(self.input.size(0)))
         #input.backward
-        self.input.requires_grad = True
+        #self.input.requires_grad = True
         self.input.grad = torch.zeros(self.input.size(0),self.input.size(1))
         for bs in range(self.input.size(0)):
             for i in range(self.input.size(1)):
@@ -182,7 +202,7 @@ class CrossEntropyLoss():
         '''TODO'''
         #-------------------------------------------------------------------------------------------------
         self.input = input
-        self.input.requires_grad = True #保存input，并且开辟梯度空间
+        #self.input.requires_grad = True #保存input，并且开辟梯度空间
         self.target = target#保存target
         #NLLloss+log+softmax
         batch_size = target.size(0)
@@ -209,15 +229,15 @@ class CrossEntropyLoss():
         #--------------------------------------------------------------------------------------------------
         self.input.grad=torch.zeros_like(self.input)
         #NLLloss+log().backward
-        _input = torch.zeros(self.input.size(1))
+        _input = torch.zeros(self.input.size(0))
         for i in range(self.input.size(0)):
             for j in range (self.input.size(1)): 
                 if j ==self.target[i]:
-                    _input[i] = (1/self.SMoutput[i][j])*(-1/self.input.size(0))
+                    _input[i] = (1/self.SMoutput[i][j])*(-1/self.input.size(0))#SMoutput是二维，但是_output是一维
         #softmax.backward
         for bs in range(self.input.size(0)):
             mol1 =torch.exp(self.input[bs][self.target[bs]]).item()#分子1
-            den =torch.exp(self.input[bs]).sum().item()#分母3
+            den =torch.exp(self.input[bs]).sum().item()#分母
             for i in range(self.input.size(1)):
                 mol2 =torch.exp(self.input[bs][i]).item()#分子2
                 if i==self.target[bs]:

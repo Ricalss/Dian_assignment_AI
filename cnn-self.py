@@ -4,6 +4,9 @@ import torchvision
 from torch.autograd import Variable
 import torch.utils.data as Data
 import torchvision.transforms as transforms
+
+#导入自写实现的代码
+import nn.function as my
 #CNN框架
 class CNN(nn.Module):
     def __init__(self):
@@ -18,7 +21,7 @@ class CNN(nn.Module):
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(2))
-        self.layer3 = nn.Linear(7*7*32, 10)
+        self.layer3 = my.Linear(7*7*32, 10)
     def forward(self,x):
         x=self.layer1(x)
         x=self.layer2(x)
@@ -26,9 +29,9 @@ class CNN(nn.Module):
         x=self.layer3(x)
         return x
 
-#超参数
-num_epochs = 5
-BATCH_SIZE = 100
+#超参数num_epochs = 5 BATCH_SIZE = 100 learning_rate = 0.001 moment = 0
+num_epochs = 1
+BATCH_SIZE = 5
 learning_rate = 0.001
 moment = 0
 
@@ -47,10 +50,10 @@ test_loader = torch.utils.data.DataLoader(dataset=test_data, batch_size=1, shuff
 
 #实例化CNN模型，并且将模型导入到cuda核心中
 model = CNN()
-model.cuda()
+
 
 #损失函数 交叉熵 
-Lossfunc = nn.CrossEntropyLoss()  
+Lossfunc = my.CrossEntropyLoss()  
 #优化函数有Adam和SGD常用，这里选择SGD
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate) 
 
@@ -59,8 +62,8 @@ for epoch in range(num_epochs):
     #加载训练数据
     for step,(x,y) in enumerate(train_loader):
         #分别得到训练数据的x和y的取值
-        ima_train=Variable(x).cuda()
-        lab_train=Variable(y).cuda()
+        ima_train=Variable(x)
+        lab_train=Variable(y)
         
         optimizer.zero_grad() 
         output=model(ima_train)         #调用模型输出结果
@@ -69,13 +72,13 @@ for epoch in range(num_epochs):
         optimizer.step()          #梯度下降
  
         #每执行100次，输出一下当前epoch、loss、accuracy
-        if(step+1) % 100 == 0:
-            print('Epoch [%d/%d], Iter[%d/%d] Loss: %.4f' %(epoch+1, num_epochs, step+1, len(train_data)/BATCH_SIZE, loss.item()))
+        if(step+1) % 5 == 0:
+            print('Epoch [%d/%d], Iter[%d/%d] Loss: %.4f' %(epoch, num_epochs, step+1, len(train_data)/BATCH_SIZE, loss.item()))
 
 model.eval()  #改为预测模式
 correct ,total= 0,0
 for images, labels in test_loader:
-    images = Variable(images).cuda()
+    images = Variable(images)
     outputs = model(images)
     _, predicted = torch.max(outputs.data, 1)  #按照维度取最大值，返回每一行中最大的元素，且返回索引
     total += labels.size(0)         #labels.size(0) = 100 = batch_size
