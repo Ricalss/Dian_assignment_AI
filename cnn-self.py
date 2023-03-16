@@ -12,12 +12,12 @@ class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
         self.layer1 = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=16, kernel_size=5, stride=1,padding=2), #卷积层（输入通道数，卷积核个数，卷积核尺寸，卷积核步长,外延填充数）
+            my.Conv2d(in_channels=1, out_channels=16, kernel_size=5, stride=1,padding=2), #卷积层（输入通道数，卷积核个数，卷积核尺寸，卷积核步长,外延填充数）
             nn.BatchNorm2d(16),       #对这16个结果进行规范处理,卷积网络中(防止梯度消失或爆炸)，设置的参数就是卷积的输出通道数
             nn.ReLU(),       #激活函数
             nn.MaxPool2d(2))
         self.layer2 = nn.Sequential(
-            nn.Conv2d(in_channels=16, out_channels=32, kernel_size=5, padding=2),
+            my.Conv2d(in_channels=16, out_channels=32, kernel_size=5, padding=2),
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(2))
