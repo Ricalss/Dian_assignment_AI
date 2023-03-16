@@ -57,7 +57,7 @@ class TestBase(object):
         
     def backward_test(self):
         self.pt_out.sum().backward()#pytorch求loss需要收敛到一个值所以这里做一个求和
-        self.pt_grad = self.ptt.grad  #传入torch计算的梯度
+        self.pt_grad = self.ptt.grad 
         if self.nn_out is None:
             print("your backward output is empty")
             return False
@@ -65,7 +65,7 @@ class TestBase(object):
         if self.nn_grad is None:
             print("your backward grad is empty")
             return False
-        res = isclose(self.nn_grad, self.pt_grad.detach().numpy()).all().item()
+        res = isclose(self.nn_grad.detach().numpy(), self.pt_grad.detach().numpy()).all().item() #原文件self.nn_grad后添加.detach().numpy()
         if res :
             return True
         else:
@@ -92,9 +92,9 @@ class Conv2dTest(TestBase):
 
     def backward_test(self):
         s = super().backward_test()
-        s &= isclose(self.nnm.weight.grad, self.pt_wgt.grad
+        s &= isclose(self.nnm.weight.grad.detach().numpy(), self.pt_wgt.grad   #原文件self.nn后添加.detach().numpy()
                      .detach().numpy()).all().item()
-        s &= isclose(self.nnm.bias.grad, self.pt_bias.grad
+        s &= isclose(self.nnm.bias.grad.detach().numpy(), self.pt_bias.grad    #原文件self.nnm后添加.detach().numpy()
                      .detach().numpy()).all().item()
         return s
     
@@ -115,12 +115,12 @@ class LinearTest(TestBase):
     def backward_test(self):
         s = super().backward_test()
         if s:
-            s = isclose(self.nnm.weight.grad, self.pt_wgt.grad
+            s = isclose(self.nnm.weight.grad.detach().numpy(), self.pt_wgt.grad
                      .detach().numpy()).all().item()
             if s == False:
                 print('weight_grad_dismatch')
         if s:
-            s = isclose(self.nnm.bias.grad, self.pt_bias.grad
+            s = isclose(self.nnm.bias.grad.detach().numpy(), self.pt_bias.grad
                      .detach().numpy()).all().item()
             if s == False:
                 print('bias_grad_dismatch')
@@ -158,9 +158,9 @@ class CrossEntropyTest(TestBase):
             return False
 
 if __name__ == "__main__":
-    test_list = [Conv2dTest(),LinearTest(),CrossEntropyTest()]
+    test_list = [Conv2dTest(),LinearTest(),CrossEntropyTest()]#
     for a in test_list:
         print("Test",a.module)
         print("forward:",a.forward_test())
-        #print("backward:",a.backward_test())
+        print("backward:",a.backward_test())
 

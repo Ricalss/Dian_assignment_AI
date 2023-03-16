@@ -56,7 +56,6 @@ class Conv2d(_ConvNd):
                 for X2 in range(dim2):
                     for X3 in range(dim3):
                         self.output[X0][X1][X2][X3]=(input[X0][:,X2:X2+ks,X3:X3+ks]*kernel[X1]).sum()+bias[X1]
-        print(self.input.grad)
         #------------------------------------------------------------------------------------------------------------------
         return self.output
     
@@ -70,27 +69,48 @@ class Conv2d(_ConvNd):
         #-------------------------------------------------------------------------------------------------------------------
         #ones  self   self.weight  self.bias
         #在forward中储存input数据为self.input,因为反向传播计算weight的梯度需要
+        #bias.backward
+        self.bias.requires_grad = True
+        self.bias.grad=torch.zeros(self.bias.size(0))
         for i in range(self.bias.size(0)):#
             _sum =0.
-            self.bias.grad[i] = _sum
-            for bs in ones.size(0):
+            for bs in range(ones.size(0)):
                 for j in range(ones.size(2)):
                     for k in range(ones.size(3)):
                         _sum += ones[bs][i][j][k]
+            self.bias.grad[i] = _sum
         #weight.backward
-        dim2 = int((input.size(2)-self.weight.size(2))/self.stride+1)
-        dim3 = int((input.size(2)-self.weight.size(3))/self.stride+1)
-        for bs in range(ones.size(0)):
-            for kn in range(self.weight.size(0)):
-                for ch in range(self.weight.size(1)):
-                    for i in range(self.weight.size(2)):
-                        for j in range(self.weight.size(3)):
-                            self.weight.grad[kn][ch][i][j] =sum(\
-                                self.input[bs][ch][i][j]*ones[bs][kn][ii][jj]\
-                                    for ii in range(0,dim2,self.stride) for jj in range(0,dim3,self.stride))
+        self.weight.requires_grad = True
+        self.weight.grad=torch.zeros(self.weight.size(0),self.weight.size(1),self.weight.size(2),self.weight.size(3))
+        idim2 = ones.size(2)
+        idim3 = ones.size(3)
+        for kn in range(self.weight.size(0)):
+            for ch in range(self.weight.size(1)):
+                for i in range(self.weight.size(2)):
+                    for j in range(self.weight.size(3)):
+                        self.weight.grad[kn][ch][i][j] =sum(\
+                            self.inputp[bs][ch][ii*self.stride[0]+i][jj*self.stride[1]+j]*ones[bs][kn][ii][jj]\
+                                for bs in range(ones.size(0))for ii in range(idim2) for jj in range(idim3))
     
         #input.backward to be finished
-        
+        self.input.requires_grad =True
+        self.input.grad = torch.zeros(self.input.size(0),self.input.size(1),self.input.size(2),self.input.size(3))
+        for bs in range(self.input.size(0)):
+            for ch in range(self.input.size(1)):
+                for i in range(self.input.size(2)):
+                    for j in range(self.input.size(3)):
+                        sum2=0.
+                        for kn in range(self.weight.size(0)): # ch is kowned
+                            for ii in range(self.weight.size(2)):
+                                for jj in range(self.weight.size(3)):
+                                    if i-ii+self.padding[0]<0 \
+                                        or i-ii>self.input.size(2)+self.padding[0]-self.weight.size(2) \
+                                        or j-jj+self.padding[1]<0 \
+                                        or j-jj>self.input.size(3)+self.padding[1]-self.weight.size(3) :
+                                        sum2 +=0.
+                                    else:
+                                        sum2 += self.weight[kn][ch][ii][jj]*ones[bs][kn][i-ii+self.padding[0]][j-jj+self.padding[1]]
+                        self.input.grad[bs][ch][i][j] =sum2
         #-------------------------------------------------------------------------------------------------------------------
         return self.input.grad
     
@@ -115,6 +135,8 @@ class Linear(Module):
     def forward(self, input):
         '''TODO'''
         #-----------------------------------------------------------------------------------------
+        self.input = input
+        self.input.requires_grad = True #保存input，并且开辟梯度空间
         self.output = torch.zeros(input.size(0),self.weight.size(0))
         for i in range(input.size(0)):
             for j in range(self.weight.size(0)):
@@ -131,6 +153,26 @@ class Linear(Module):
         return self.output
     def backward(self, ones: Tensor):
         '''TODO'''
+        #-------------------------------------------------------------------------------------------------------------------
+        #bias.backward
+        self.bias.requires_grad = True
+        self.bias.grad=torch.zeros(self.bias.size(0))
+        for i in range(self.bias.size(0)):
+            self.bias.grad[i]=sum(ones[bs][i]for bs in range(ones.size(0)))
+        #weight.backward
+        self.weight.requires_grad = True
+        self.weight.grad=torch.zeros(self.weight.size(0),self.weight.size(1))
+        for out in range(self.weight.size(0)):
+            for i in range(self.weight.size(1)):
+                self.weight.grad[out][i]=sum(self.input[bs][i]*ones[bs][out] for bs in range(self.input.size(0)))
+        #input.backward
+        self.input.requires_grad = True
+        self.input.grad = torch.zeros(self.input.size(0),self.input.size(1))
+        for bs in range(self.input.size(0)):
+            for i in range(self.input.size(1)):
+                self.input.grad[bs][i]=sum(self.weight[out][i]*ones[bs][out] for out in range(self.weight.size(0)))
+        
+        #-------------------------------------------------------------------------------------------------------------------
         return self.input.grad
 
 class CrossEntropyLoss():
@@ -138,7 +180,10 @@ class CrossEntropyLoss():
         pass
     def __call__(self, input, target):
         '''TODO'''
-        #---------------------------------------------------------------------
+        #-------------------------------------------------------------------------------------------------
+        self.input = input
+        self.input.requires_grad = True #保存input，并且开辟梯度空间
+        self.target = target#保存target
         #NLLloss+log+softmax
         batch_size = target.size(0)
         #softmax
@@ -147,6 +192,9 @@ class CrossEntropyLoss():
             sum_p =sum(torch.exp(input[i][z])for z in range(input.size(1)))
             for j in range(input.size(1)):
                 _input[i] = (torch.exp(input[i])) /sum_p
+                
+        self._input = _input   #保存数据用于后续backward计算，是为一维
+        
         #log()
         _input =log(_input)
         #NLLloss
@@ -154,9 +202,28 @@ class CrossEntropyLoss():
         for j in range(batch_size):
             self.output += -_input[j][target[j]]
         self.output =self.output / batch_size
-        #---------------------------------------------------------------------
+        #---------------------------------------------------------------------------------------------------
         return self.output
     def backward(self):
         '''TODO'''
+        #--------------------------------------------------------------------------------------------------
+        self.input.grad=torch.zeros_like(self.input)
+        #NLLloss+log().backward
+        _input = torch.zeros_like(self._input)#一维
+        for i in range(self.input.size(0)):
+            _input[i] = (1/self.input[i])*(-1/self._input.size(0))
+        #softmax.backward
+        for bs in range(self.input.size(0)):
+            mol1 =torch.exp(self.input[bs][self.target[bs]]).item()#分子1
+            den =torch.exp(self.input[bs]).sum().item()#分母3
+            for i in range(self.input.size(1)):
+                mol2 =torch.exp(self.input[bs][i]).item()#分子2
+                if i==self.target[bs]:
+                    self.input.grad[bs][i]=(den-mol1)*mol1/(den**2)*_input[bs]
+                else:
+                    self.input.grad[bs][i]=(-(mol1*mol2)/(den**2))*_input[bs]
+                
+        
+        #---------------------------------------------------------------------------------------------------
         return self.input.grad
         
