@@ -165,4 +165,4 @@ if __name__ == "__main__":
     for a in test_list:
         print("Test",a.module)
         print("forward:",a.forward_test())
-        #print("backward:",a.backward_test())
+        print("backward:",a.backward_test())
