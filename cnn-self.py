@@ -23,7 +23,7 @@ class CNN(nn.Module):
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(2))
-        self.layer3 = nn.Linear(7*7*32, 10)
+        self.layer3 = my.Linear(7*7*32, 10)
     def forward(self,x):
         x=self.layer1(x)
         x=self.layer2(x)
