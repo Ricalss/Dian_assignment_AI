@@ -108,21 +108,27 @@ class CrossEntropyLoss():
         #------------------------------------------------------------------------------------------------------
         self.input = input
         self.target = target
-        
+        self.tars = self.input.size(0)
+        self.Bs = input.size(0)
         #softmax  input(bs, labs) ---> output1(bs, labs)
-        self.output1 = torch.exp(input)/sum(torch.exp(input))
+        self.out_exp = torch.exp(input) #空间换时间
+        self.exp_sum = torch.sum(self.out_exp, dim=1).reshape(self.Bs, 1)
+        self.label_exp = torch.zeros(self.Bs, 1) #标签值
+        for bs in range(self.Bs):
+            self.label_exp[bs][0] = self.out_exp[bs][target[bs]]
+        self.label_P = self.label_exp / self.exp_sum 
         #log -1 NLLloss output1(bs,labs) ---> self.output = scalar
-        self.Bs = self.output1.size(0)
-        self.output = -sum(torch.log(Tensor(self.output1[bs][target[bs]]for bs in range(self.Bs)))) / self.Bs
-        
+        self.output = -sum(torch.log(self.label_P)) / self.Bs  
         #------------------------------------------------------------------------------------------------------
         return self.output
     def backward(self):
         '''TODO'''
         #------------------------------------------------------------------------------------------------------
-        
-        
-        
-        
+        vec_bs = -1/self.Bs/self.label_P
+        self.input.grad = -self.out_exp*self.label_exp/(self.exp_sum**2) 
+        change = (self.label_exp-self.exp_sum)/self.label_exp
+        for bs in range(self.Bs):
+            self.input.grad[bs][self.target[bs]] *= change[bs][0]
+        self.input.grad = self.input.grad*vec_bs
         #------------------------------------------------------------------------------------------------------
         return self.input.grad
