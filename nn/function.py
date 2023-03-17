@@ -7,7 +7,7 @@ from torch.nn.modules.conv import _ConvNd
 # from cnnbase import ConvBase
 from torch.nn.modules.utils import _pair
 from torch.nn.common_types import _size_2_t
-
+import time#计时功能
 class Conv2d(_ConvNd):
    
     def __init__(
@@ -85,7 +85,7 @@ class Linear(Module):
         #input (bs,inp)  self.weight(inp,outp)
         #------------------------------------------------------------------------------------------------------
         self.input = input
-        self.output = torch.mul(input,self.weight)
+        self.output = torch.mm(input,self.weight.T)+self.bias
         #------------------------------------------------------------------------------------------------------
         return self.output
     def backward(self, ones: Tensor):
@@ -94,9 +94,9 @@ class Linear(Module):
         #------------------------------------------------------------------------------------------------------
         bs, inp, outp = self.input.size(0), self.input.size(0), self.weight.size(1)
         #input.backward
-        self.input.grad = torch.mul(self.output, self.weight.T)
+        self.input.grad = torch.mm(ones, self.weight)
         #weight.backward
-        self.weight.grad = torch.mul(self.output, self.input.T )
+        self.weight.grad = torch.mm(ones.T, self.input.T ).T
         #------------------------------------------------------------------------------------------------------
         return self.input.grad
 
@@ -123,6 +123,7 @@ class CrossEntropyLoss():
         return self.output
     def backward(self):
         '''TODO'''
+        time_start = time.time()
         #------------------------------------------------------------------------------------------------------
         vec_bs = -1/self.Bs/self.label_P
         self.input.grad = -self.out_exp*self.label_exp/(self.exp_sum**2) 
@@ -131,4 +132,6 @@ class CrossEntropyLoss():
             self.input.grad[bs][self.target[bs]] *= change[bs][0]
         self.input.grad = self.input.grad*vec_bs
         #------------------------------------------------------------------------------------------------------
+        time_end = time.time()
+        print(time_end - time_start)
         return self.input.grad
