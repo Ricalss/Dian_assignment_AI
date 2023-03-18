@@ -33,6 +33,7 @@ class TestBase(object):
         input_shape = input_shape.split('x')
         keys = set(module_params + input_shape)#集合
         args = {k: v for k, v in zip(keys, randnint(len(keys)))}#随机维度， zip打包成列表，每个元素是元组，元组包含传递的可迭代参数
+        args = {'B': 12, 'W': 20, 'k_s': 2, 'H': 21, 'Cp': 16, 'C': 3}
         #args['k_s']=3
         #args['L'],args['B']=8 ,13
         #args = {'k_s': 3, 'B': 8, 'Cp': 16, 'H': 15, 'C': 9, 'W': 13}#给定维度原：{"W":4,"Cp":5,"B":2,"H":4,"C":3,"k_s":2,"L":5},L为线性层输入
@@ -161,7 +162,7 @@ class CrossEntropyTest(TestBase):
             return False
 
 if __name__ == "__main__":
-    test_list = [LinearTest()]#,Conv2dTest()CrossEntropyTest(),
+    test_list = [Conv2dTest()]#,CrossEntropyTest(),LinearTest()
     for a in test_list:
         print("Test",a.module)
         print("forward:",a.forward_test())
