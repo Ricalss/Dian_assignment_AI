@@ -47,7 +47,7 @@ test_loader = torch.utils.data.DataLoader(dataset=test_data, batch_size=1, shuff
 
 #实例化CNN模型，并且将模型导入到cuda核心中
 model = CNN()
-model.cuda()
+model.cuda() #cuda核心计算
 
 #损失函数 交叉熵 
 Lossfunc = nn.CrossEntropyLoss()  
