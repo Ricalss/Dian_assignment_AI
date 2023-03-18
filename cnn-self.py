@@ -14,26 +14,26 @@ class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
         self.layer1 = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=16, kernel_size=5, stride=1,padding=2), #卷积层（输入通道数，卷积核个数，卷积核尺寸，卷积核步长,外延填充数）
+            my.Conv2d(in_channels=1, out_channels=16, kernel_size=5, stride=1,padding=2), #卷积层（输入通道数，卷积核个数，卷积核尺寸，卷积核步长,外延填充数）
             nn.BatchNorm2d(16),       #对这16个结果进行规范处理,卷积网络中(防止梯度消失或爆炸)，设置的参数就是卷积的输出通道数
             nn.ReLU(),       #激活函数
             nn.MaxPool2d(2))
         self.layer2 = nn.Sequential(
-            nn.Conv2d(in_channels=16, out_channels=32, kernel_size=5, padding=2),
+            my.Conv2d(in_channels=16, out_channels=32, kernel_size=5, padding=2),
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(2))
-        self.layer3 = nn.Linear(7*7*32, 10)
+        self.layer3 = my.Linear(7*7*32, 10)
     def forward(self,x):
         x=self.layer1(x)
         x=self.layer2(x)
-        x = x.reshape(x.size(0), -1)  
+        x = x.reshape(x.size(0), -1)  #降维度，才能输入到Linear层
         x=self.layer3(x)
         return x
-
+time_start=time.time()
 #超参数num_epochs = 5 BATCH_SIZE = 100 learning_rate = 0.001 moment = 0
 num_epochs = 1
-BATCH_SIZE = 100
+BATCH_SIZE = 5
 learning_rate = 0.001
 moment = 0
 optimizer_gap = 5
@@ -78,8 +78,8 @@ for epoch in range(num_epochs):
         if(step+1) % optimizer_gap == 0:
             time_end = time.time()
             print('Epoch [%d/%d], Iter[%d/%d] Loss: %.4f time gap %f' %(epoch, num_epochs, step+1, len(train_data)/BATCH_SIZE, loss.item(), time_end-time_start))
-            
-
+time_end1 = time.time()            
+print('training time: %f' %(time_end1 - time_start))
 model.eval()  #改为预测模式
 correct ,total= 0,0
 for images, labels in test_loader:
@@ -88,5 +88,5 @@ for images, labels in test_loader:
     _, predicted = torch.max(outputs.data, 1)  #按照维度取最大值，返回每一行中最大的元素，且返回索引
     total += labels.size(0)         #labels.size(0) = 100 = batch_size
     correct += (predicted.cpu() == labels).sum()  #计算每次批量处理后，100个测试图像中有多少个预测正确，求和加入correct
-       
-print('Test accuracy of the model on the 10000 test images: %d %%' %(100 * correct/total))
+time_end2 = time.time()       
+print('Test accuracy of the model on the 10000 test images: %d %%  , eval time %f' %(100 * correct/total , time_end2 - time_end))
