@@ -35,8 +35,9 @@ class Conv2d(_ConvNd):
         
     def conv2d(self, input, kernel, bias = 0, stride=1, padding=0):
         '''TODO forword的计算方法'''
-        time_start = time.time()
+        #time_start = time.time()
         #-----------------------------------------------------------------------------------------------------------------------------
+        
         self.input = input
         pad_n = self.padding[0]
         bs, ch, x, y = (input.size(i)for i in range(4))
@@ -48,6 +49,7 @@ class Conv2d(_ConvNd):
             self.input_padding[:, :, pad_n:x+pad_n,pad_n:y+pad_n] = input
         else :
             self.input_padding = input
+        
         #参数
         kn = kernel.size(0)#卷积核个数，输出通道数
         ks = kernel.size(2)#卷积核的尺寸
@@ -75,12 +77,13 @@ class Conv2d(_ConvNd):
         for b_s in range(bs):   #for k_n in range(kn):取消该循环，可以在外定义bias，使得可以广播相加
             self.mid_output = (self.kernel_mat*self.pad_mat[b_s]).reshape(kn,dim2,dim3,k_elems)   #可以合并
             self.output[b_s,:,:,:] = torch.sum(self.mid_output,dim=-1)+bias_3dim
+            
+            
         #self.output = torch.matmul(self.kernel_mat, self.pad_mat.T).T 彻底的错误
         #matmul可广播
         #-----------------------------------------------------------------------------------------------------------------------------
-        
-        time_end = time.time()
-        print(time_end - time_start)
+        #time_end = time.time()
+        #print(time_end - time_start)
         return self.output
     
     def forward(self, input: Tensor):
@@ -90,8 +93,9 @@ class Conv2d(_ConvNd):
     
     def backward(self, ones: Tensor):
         '''TODO backward的计算方法''' 
-        time_start = time.time()
+        #time_start = time.time()
         #------------------------------------------------------------------------------------------------------------------------------
+        
         #参数
         kn = self.weight.size(0)
         ch = self.weight.size(1)
@@ -103,6 +107,7 @@ class Conv2d(_ConvNd):
         lens = k_elems*dim2*dim3
         pad_n =self.padding[0]   #默认为正方形的图片
         x ,y = self.input.size(2), self.input.size(3)
+        
         #bias.backward()
         self.bias.grad = torch.zeros_like(self.bias)
         for k_n in range(kn):
@@ -125,9 +130,10 @@ class Conv2d(_ConvNd):
             n2 = int(i / dim3)
             self.pad_grad[:, :, n2:n2+ks, n3:n3+ks] += mid_grad[:, i*k_elems:i*k_elems+k_elems].reshape(bs,ch,ks,ks) 
         self.input.grad = self.pad_grad[:, :, pad_n:x+pad_n, pad_n:y+pad_n]
+        
         #------------------------------------------------------------------------------------------------------------------------------
-        time_end = time.time()
-        print(time_end - time_start)
+        #time_end = time.time()
+        #print(time_end - time_start)
         return self.input.grad
     
 class Linear(Module):
@@ -150,30 +156,35 @@ class Linear(Module):
             
     def forward(self, input):
         '''TODO'''
-        time_start = time.time()
+        #time_start = time.time()
         #input (bs,inp)  self.weight(inp,outp)
         #------------------------------------------------------------------------------------------------------
         
         self.input = input
         self.output = torch.mm(input,self.weight.T)+self.bias
+        
         #------------------------------------------------------------------------------------------------------
-        time_end = time.time()
-        print(time_end - time_start)
+        #time_end = time.time()
+        #print(time_end - time_start)
         return self.output
     def backward(self, ones: Tensor):
         '''TODO'''
-        time_start = time.time()
+        #time_start = time.time()
         #input (bs,inp)  self.weight(inp,outp)  ones = self.output(bs,outp)
         #------------------------------------------------------------------------------------------------------
+        
         # #bias.backweard
         self.bias.grad=torch.sum(ones,dim=0)
+        
         #input.backward
         self.input.grad = torch.mm(ones, self.weight)
+        
         #weight.backward
         self.weight.grad = torch.mm(self.input.T, ones ).T
+        
         #------------------------------------------------------------------------------------------------------
-        time_end = time.time()
-        print(time_end - time_start)
+        #time_end = time.time()
+        #print(time_end - time_start)
         return self.input.grad
 
 class CrossEntropyLoss():
@@ -181,12 +192,14 @@ class CrossEntropyLoss():
         pass
     def __call__(self, input, target):
         '''TODO'''
-        time_start = time.time()
+        #time_start = time.time()
         #------------------------------------------------------------------------------------------------------
+        
         self.input = input
         self.target = target
         self.tars = self.input.size(0)
         self.Bs = input.size(0)
+        
         #softmax  input(bs, labs) ---> output1(bs, labs)
         self.out_exp = torch.exp(input) #空间换时间
         self.exp_sum = torch.sum(self.out_exp, dim=1).reshape(self.Bs, 1)
@@ -194,23 +207,28 @@ class CrossEntropyLoss():
         for bs in range(self.Bs):
             self.label_exp[bs][0] = self.out_exp[bs][target[bs]]
         self.label_P = self.label_exp / self.exp_sum 
+        
         #log -1 NLLloss output1(bs,labs) ---> self.output = scalar
-        self.output = -sum(torch.log(self.label_P)) / self.Bs  
+        self.output = -sum(torch.log(self.label_P)) / self.Bs 
+        
+         
         #------------------------------------------------------------------------------------------------------
-        time_end = time.time()
-        print(time_end - time_start)
+        #time_end = time.time()
+        #print(time_end - time_start)
         return self.output
     def backward(self):
         '''TODO'''
-        time_start = time.time()
+        #time_start = time.time()
         #------------------------------------------------------------------------------------------------------
+        
         vec_bs = -1/self.Bs/self.label_P
         self.input.grad = -self.out_exp*self.label_exp/(self.exp_sum**2) 
         change = (self.label_exp-self.exp_sum)/self.label_exp
         for bs in range(self.Bs):
             self.input.grad[bs][self.target[bs]] *= change[bs][0]
         self.input.grad = self.input.grad*vec_bs
+        
         #------------------------------------------------------------------------------------------------------
-        time_end = time.time()
-        print(time_end - time_start)
+        #time_end = time.time()
+        #print(time_end - time_start)
         return self.input.grad
