@@ -28,7 +28,7 @@ class CNN(nn.Module):
 
 #超参数
 num_epochs = 5
-BATCH_SIZE = 100
+BATCH_SIZE = 600
 learning_rate = 0.001
 moment = 0
 
@@ -82,3 +82,4 @@ for images, labels in test_loader:
     correct += (predicted.cpu() == labels).sum()  #计算每次批量处理后，100个测试图像中有多少个预测正确，求和加入correct
        
 print('Test accuracy of the model on the 10000 test images: %d %%' %(100 * correct/total))
+#请移步分支CNN-self

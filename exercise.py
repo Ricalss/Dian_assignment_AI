@@ -5,3 +5,4 @@ print(sum(x))
 print(x.sum())
 print(torch.sum(x))
 
+#请移步分支CNN-self
