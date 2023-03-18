@@ -163,7 +163,7 @@ class CrossEntropyTest(TestBase):
             return False
 
 if __name__ == "__main__":
-    test_list = [Conv2dTest()]#,CrossEntropyTest(),LinearTest()
+    test_list = [Conv2dTest(),CrossEntropyTest(),LinearTest()]#
     for a in test_list:
         print("Test",a.module)
         print("forward:",a.forward_test())

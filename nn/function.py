@@ -34,7 +34,8 @@ class Conv2d(_ConvNd):
             False, _pair(0), groups, bias, padding_mode, **factory_kwargs)
         
     def conv2d(self, input, kernel, bias = 0, stride=1, padding=0):
-        '''TODO forword的计算方法''' 
+        '''TODO forword的计算方法'''
+        time_start = time.time()
         #-----------------------------------------------------------------------------------------------------------------------------
         self.input = input
         pad_n = self.padding[0]
@@ -77,6 +78,9 @@ class Conv2d(_ConvNd):
         #self.output = torch.matmul(self.kernel_mat, self.pad_mat.T).T 彻底的错误
         #matmul可广播
         #-----------------------------------------------------------------------------------------------------------------------------
+        
+        time_end = time.time()
+        print(time_end - time_start)
         return self.output
     
     def forward(self, input: Tensor):
@@ -86,6 +90,7 @@ class Conv2d(_ConvNd):
     
     def backward(self, ones: Tensor):
         '''TODO backward的计算方法''' 
+        time_start = time.time()
         #------------------------------------------------------------------------------------------------------------------------------
         #参数
         kn = self.weight.size(0)
@@ -120,9 +125,9 @@ class Conv2d(_ConvNd):
             n2 = int(i / dim3)
             self.pad_grad[:, :, n2:n2+ks, n3:n3+ks] += mid_grad[:, i*k_elems:i*k_elems+k_elems].reshape(bs,ch,ks,ks) 
         self.input.grad = self.pad_grad[:, :, pad_n:x+pad_n, pad_n:y+pad_n]
-        
-        
         #------------------------------------------------------------------------------------------------------------------------------
+        time_end = time.time()
+        print(time_end - time_start)
         return self.input.grad
     
 class Linear(Module):
@@ -145,12 +150,15 @@ class Linear(Module):
             
     def forward(self, input):
         '''TODO'''
+        time_start = time.time()
         #input (bs,inp)  self.weight(inp,outp)
         #------------------------------------------------------------------------------------------------------
         
         self.input = input
         self.output = torch.mm(input,self.weight.T)+self.bias
         #------------------------------------------------------------------------------------------------------
+        time_end = time.time()
+        print(time_end - time_start)
         return self.output
     def backward(self, ones: Tensor):
         '''TODO'''
@@ -173,6 +181,7 @@ class CrossEntropyLoss():
         pass
     def __call__(self, input, target):
         '''TODO'''
+        time_start = time.time()
         #------------------------------------------------------------------------------------------------------
         self.input = input
         self.target = target
@@ -188,6 +197,8 @@ class CrossEntropyLoss():
         #log -1 NLLloss output1(bs,labs) ---> self.output = scalar
         self.output = -sum(torch.log(self.label_P)) / self.Bs  
         #------------------------------------------------------------------------------------------------------
+        time_end = time.time()
+        print(time_end - time_start)
         return self.output
     def backward(self):
         '''TODO'''

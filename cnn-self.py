@@ -33,7 +33,7 @@ class CNN(nn.Module):
 time_start=time.time()
 #超参数num_epochs = 5 BATCH_SIZE = 100 learning_rate = 0.001 moment = 0
 num_epochs = 1
-BATCH_SIZE = 5
+BATCH_SIZE = 100
 learning_rate = 0.001
 moment = 0
 optimizer_gap = 5
