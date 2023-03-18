@@ -75,7 +75,7 @@ class Linear(Module):
         self.in_features = in_features
         self.out_features = out_features
         
-        self.weight = Parameter(torch.empty((out_features, in_features), **factory_kwargs))#随机weight
+        self.weight = Parameter(torch.empty((out_features, in_features), **factory_kwargs))#随机weight(outp, inp)
         if bias:
             self.bias = Parameter(torch.empty(out_features, **factory_kwargs))
             
@@ -90,14 +90,18 @@ class Linear(Module):
         return self.output
     def backward(self, ones: Tensor):
         '''TODO'''
+        time_start = time.time()
         #input (bs,inp)  self.weight(inp,outp)  ones = self.output(bs,outp)
         #------------------------------------------------------------------------------------------------------
-        bs, inp, outp = self.input.size(0), self.input.size(0), self.weight.size(1)
+        # #bias.backweard
+        self.bias.grad=torch.sum(ones,dim=0)
         #input.backward
         self.input.grad = torch.mm(ones, self.weight)
         #weight.backward
-        self.weight.grad = torch.mm(ones.T, self.input.T ).T
+        self.weight.grad = torch.mm(self.input.T, ones ).T
         #------------------------------------------------------------------------------------------------------
+        time_end = time.time()
+        print(time_end - time_start)
         return self.input.grad
 
 class CrossEntropyLoss():
