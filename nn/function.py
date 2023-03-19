@@ -148,7 +148,7 @@ class Linear(Module):
         self.in_features = in_features
         self.out_features = out_features
         
-        self.weight = Parameter(torch.randn((out_features, in_features), **factory_kwargs)) #随机weight(outp, inp) 改变初始化方式
+        self.weight = Parameter(torch.randn((out_features, in_features), **factory_kwargs ))#随机weight(outp, inp) 改变初始化方式
         if bias:
             self.bias = Parameter(torch.randn(out_features, **factory_kwargs))
             
