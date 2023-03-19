@@ -60,9 +60,9 @@ class Conv2d(_ConvNd):
         
         #kernel降维---->(kn, ch*ks*ks)
         kernel_2d = kernel.reshape(kn, k_elems)  #1,
-        self.kernel_mat = torch.cat(tuple(kernel_2d for i in range(dim2*dim3)),1)#延长二维矩阵
-        """kernel_2d = kernel.reshape(kn, 1, k_elems)  #1
-        #self.kernel_mat = kernel_2d.expand(-1, dim2*dim3, -1).reshape(kn, lens)"""#效果不如上式
+        #self.kernel_mat = torch.cat(tuple(kernel_2d for _ in range(dim2*dim3)),1)#延长二维矩阵
+        kernel_2d = kernel.reshape(kn, 1, k_elems)  #1
+        self.kernel_mat = kernel_2d.expand(-1, dim2*dim3, -1).reshape(kn, lens)#效果
         
         #input_padding降维---->(bs, dim2*dim3*ch*ks*ks) 
         self.pad_mat = torch.zeros(bs, lens)
@@ -110,26 +110,25 @@ class Conv2d(_ConvNd):
         
         #bias.backward()
         self.bias.grad = torch.zeros_like(self.bias)
-        for k_n in range(kn):
-            self.bias.grad[k_n] = torch.sum(ones[:,k_n,:,:])  
+        #for k_n in range(kn):
+           # self.bias.grad[k_n] = torch.sum(ones[:,k_n,:,:])  
+        self.bias.grad = torch.sum(ones,dim=[0, 2, 3])
         
         #ones三维化
-        ones_3dim = torch.cat(tuple(ones for i in range(k_elems)),3).reshape(bs,kn,lens)
+        ones_3dim = torch.cat(tuple(ones for _ in range(k_elems)),3).reshape(bs, kn, lens)
         
         #weight.backward()    weight就是kernel
-        self.weight.grad = torch.zeros_like(self.weight)
-        '''for k_n in range(kn):
-            self.weight.grad[k_n] = torch.sum((ones_3dim[:,k_n,:]*self.pad_mat).reshape(-1, k_elems), dim=0).reshape(ch,ks,ks)'''
+        #self.weight.grad = torch.zeros_like(self.weight)
         self.weight.grad = torch.sum((ones_3dim*self.pad_mat.reshape(bs, 1, lens)).reshape(bs, kn, dim2*dim3, k_elems), dim=[0,2]).reshape(kn,ch,ks,ks)
         
         #input.backward()
         pad_grad = torch.zeros(bs, ch, x+2*pad_n, y+2*pad_n)
         #mid_grad = torch.zeros_like(self.pad_mat)
-        mid_grad = torch.sum(ones_3dim*self.kernel_mat,dim=1)  #(bs,lens)
+        mid_grad = torch.sum(ones_3dim*self.kernel_mat,dim=1).reshape(bs,dim2*dim3,ch,ks,ks)  #(bs,lens)
         for i in range(dim2*dim3):
             n3 = i % dim3
             n2 = int(i / dim3)
-            pad_grad[:, :, n2:n2+ks, n3:n3+ks] += mid_grad[:, i*k_elems:i*k_elems+k_elems].reshape(bs,ch,ks,ks) 
+            pad_grad[:, :, n2:n2+ks, n3:n3+ks] += mid_grad[:, i]
         self.input.grad = pad_grad[:, :, pad_n:x+pad_n, pad_n:y+pad_n]
         
         #------------------------------------------------------------------------------------------------------------------------------
@@ -149,9 +148,9 @@ class Linear(Module):
         self.in_features = in_features
         self.out_features = out_features
         
-        self.weight = Parameter(torch.empty((out_features, in_features), **factory_kwargs))#随机weight(outp, inp)
+        self.weight = Parameter(torch.randn((out_features, in_features), **factory_kwargs)) #随机weight(outp, inp) 改变初始化方式
         if bias:
-            self.bias = Parameter(torch.empty(out_features, **factory_kwargs))
+            self.bias = Parameter(torch.randn(out_features, **factory_kwargs))
             
             
     def forward(self, input):
@@ -194,7 +193,7 @@ class CrossEntropyLoss():
         '''TODO'''
         #time_start = time.time()
         #------------------------------------------------------------------------------------------------------
-        
+        self.num = 1.e-6
         self.input = input
         self.target = target
         self.tars = self.input.size(0)
@@ -202,14 +201,14 @@ class CrossEntropyLoss():
         
         #softmax  input(bs, labs) ---> output1(bs, labs)
         self.out_exp = torch.exp(input) #空间换时间
-        self.exp_sum = torch.sum(self.out_exp, dim=1).reshape(self.Bs, 1)
-        self.label_exp = torch.zeros(self.Bs, 1) #标签值
+        self.exp_sum = (torch.sum(self.out_exp, dim=1)).reshape(self.Bs, 1)
+        self.label_exp = torch.zeros(self.Bs, 1) #标签值(bs,1)
         for bs in range(self.Bs):
             self.label_exp[bs][0] = self.out_exp[bs][target[bs]]
-        self.label_P = self.label_exp / self.exp_sum 
+        self.label_P = self.label_exp / ((self.exp_sum))
         
         #log -1 NLLloss output1(bs,labs) ---> self.output = scalar
-        self.output = -sum(torch.log(self.label_P)) / self.Bs 
+        self.output = -sum(torch.log(self.label_P+self.num+self.num)) / self.Bs 
         
          
         #------------------------------------------------------------------------------------------------------
@@ -220,13 +219,16 @@ class CrossEntropyLoss():
         #time_start = time.time()
         #------------------------------------------------------------------------------------------------------
         
-        vec_bs = -1/self.Bs/self.label_P
-        self.input.grad = -self.out_exp*self.label_exp/(self.exp_sum**2) 
-        change = (self.label_exp-self.exp_sum)/self.label_exp
-        for bs in range(self.Bs):
-            self.input.grad[bs][self.target[bs]] *= change[bs][0]
-        self.input.grad = self.input.grad*vec_bs
+        """vec_bs = -1/self.Bs/self.label_P#(bs,1)
+        self.input.grad = -self.out_exp*self.label_exp/(self.exp_sum**2) #(bs,labs)
+        change = (self.label_exp-self.exp_sum)/self.label_exp #(bs, 1)
+        for b_s in range(self.Bs):
+            self.input.grad[b_s][self.target[b_s]] *= change[b_s][0]
+        self.input.grad = self.input.grad*vec_bs"""
         
+        self.input.grad = self.out_exp/(self.exp_sum+self.num)/self.Bs +self.num
+        for b_s in range(self.Bs):
+            self.input.grad[b_s][self.target[b_s]] -= 1/self.Bs+self.num
         #------------------------------------------------------------------------------------------------------
         #print(time.time() - time_start)
         return self.input.grad

@@ -34,7 +34,7 @@ class TestBase(object):
         keys = set(module_params + input_shape)#集合
         args = {k: v for k, v in zip(keys, randnint(len(keys)))}#随机维度， zip打包成列表，每个元素是元组，元组包含传递的可迭代参数
         args['k_s'] = 3   #k_s如果是随机值，会造成kernel_size大于图片尺寸
-        args = {'B':600, 'Ch':1, 'H':28, 'W':28, 'Cp':16,'k_s':5,'stride':1,'padding':2, 'C':7*7*32, 'L':10, }
+        args = {'B':100, 'Ch':1, 'H':28, 'W':28, 'Cp':16,'k_s':5,'stride':1,'padding':2, 'C':7*7*32, 'L':10, }
         print(module,args)
         self.nnt = 0.9*torch.rand(tuple(args[k] for k in input_shape))+0.1#放缩产生随机数的范围，
         self.ptt = self.nnt.clone().detach()#detach从当前计算图中分离下来的；深拷贝但是无梯度
@@ -49,12 +49,12 @@ class TestBase(object):
             return False
         res = isclose(self.nn_out.cpu().detach().numpy(),
                        self.pt_out.cpu().detach().numpy()).all().item()#比较
-        """for i in range(self.nn_out.shape[0]):
+        '''for i in range(self.nn_out.shape[0]):
             for j in range(self.nn_out.shape[1]):
                 if isclose(self.nn_out.cpu().detach().numpy()[i][j],
                        self.pt_out.cpu().detach().numpy()[i][j]).all().item() !=True:
                     print(i,j,self.nn_out.cpu().detach().numpy()[i][j],
-                       self.pt_out.cpu().detach().numpy()[i][j])"""
+                       self.pt_out.cpu().detach().numpy()[i][j])'''
         if res :
             return True
         else:
@@ -101,12 +101,13 @@ class Conv2dTest(TestBase):
     def backward_test(self):
         s = super().backward_test()
         print(s)
-        s &= isclose(self.nnm.weight.grad.detach().numpy(), self.pt_wgt.grad   #原文件self.nn后添加.detach().numpy()
+        wgt = isclose(self.nnm.weight.grad.detach().numpy(), self.pt_wgt.grad   #原文件self.nn后添加.detach().numpy()
                      .detach().numpy()).all().item()
-        print(s)
-        s &= isclose(self.nnm.bias.grad.detach().numpy(), self.pt_bias.grad    #原文件self.nnm后添加.detach().numpy()
+        print(wgt)
+        bia = isclose(self.nnm.bias.grad.detach().numpy(), self.pt_bias.grad    #原文件self.nnm后添加.detach().numpy()
                      .detach().numpy()).all().item()
-        return s
+        print(bia)
+        return (s and wgt and bia)
     
 
 class LinearTest(TestBase):
@@ -168,7 +169,7 @@ class CrossEntropyTest(TestBase):
             return False
 
 if __name__ == "__main__":
-    test_list = [LinearTest()]#,,Conv2dTest()CrossEntropyTest()
+    test_list = [LinearTest(),CrossEntropyTest(),Conv2dTest()]#
     for a in test_list:
         print("Test",a.module)
         print("forward:",a.forward_test())

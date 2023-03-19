@@ -14,6 +14,5 @@ tensor1 = torch.randn(bs, dim2,dim3,ch*ks*ks)
 tensor2 = torch.randn(kn, ch*ks*ks)
 print(torch.matmul(tensor1, tensor2.T).size())
 tensor3 = torch.randn(bs, kn, dim2, dim3)
-
-x = torch.tensor([[1,2], [4,5], [7,8]])
-print(x.expand(3,6))
+x = 1.e-30
+print(x)
