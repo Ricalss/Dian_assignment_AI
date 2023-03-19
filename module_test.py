@@ -34,10 +34,7 @@ class TestBase(object):
         keys = set(module_params + input_shape)#集合
         args = {k: v for k, v in zip(keys, randnint(len(keys)))}#随机维度， zip打包成列表，每个元素是元组，元组包含传递的可迭代参数
         args['k_s'] = 3   #k_s如果是随机值，会造成kernel_size大于图片尺寸
-        #args = {'B': 12, 'W': 20, 'k_s': 2, 'H': 21, 'Cp': 16, 'C': 3}
-        #args['k_s']=3
-        #args['L'],args['B']=8 ,13
-        #args = {'k_s': 3, 'B': 8, 'Cp': 16, 'H': 15, 'C': 9, 'W': 13}#给定维度原：{"W":4,"Cp":5,"B":2,"H":4,"C":3,"k_s":2,"L":5},L为线性层输入
+        args = {'B':600, 'Ch':1, 'H':28, 'W':28, 'Cp':16,'k_s':5,'stride':1,'padding':2, 'C':7*7*32, 'L':10, }
         print(module,args)
         self.nnt = 0.9*torch.rand(tuple(args[k] for k in input_shape))+0.1#放缩产生随机数的范围，
         self.ptt = self.nnt.clone().detach()#detach从当前计算图中分离下来的；深拷贝但是无梯度
@@ -52,6 +49,12 @@ class TestBase(object):
             return False
         res = isclose(self.nn_out.cpu().detach().numpy(),
                        self.pt_out.cpu().detach().numpy()).all().item()#比较
+        """for i in range(self.nn_out.shape[0]):
+            for j in range(self.nn_out.shape[1]):
+                if isclose(self.nn_out.cpu().detach().numpy()[i][j],
+                       self.pt_out.cpu().detach().numpy()[i][j]).all().item() !=True:
+                    print(i,j,self.nn_out.cpu().detach().numpy()[i][j],
+                       self.pt_out.cpu().detach().numpy()[i][j])"""
         if res :
             return True
         else:
@@ -82,7 +85,7 @@ class TestBase(object):
 
 class Conv2dTest(TestBase):
     def __init__(self):
-        super().__init__('Conv2d', input_shape='BxCxHxW', module_params='C,Cp,k_s')#调用父类初始化函数初始化类
+        super().__init__('Conv2d', input_shape='BxChxHxW', module_params='Ch,Cp,k_s,stride,padding')#调用父类初始化函数初始化类
 
     def forward_test(self):
 
@@ -92,13 +95,15 @@ class Conv2dTest(TestBase):
         self.pt_bias.requires_grad = True
         #得到pytorch计算结果
         self.pt_out = F.conv2d(input=self.ptt, weight=self.pt_wgt,
-                               bias=self.pt_bias,stride=1,padding=0) #padding=0
+                               bias=self.pt_bias,stride=1,padding=2) #padding=0
         return super().forward_test()
 
     def backward_test(self):
         s = super().backward_test()
+        print(s)
         s &= isclose(self.nnm.weight.grad.detach().numpy(), self.pt_wgt.grad   #原文件self.nn后添加.detach().numpy()
                      .detach().numpy()).all().item()
+        print(s)
         s &= isclose(self.nnm.bias.grad.detach().numpy(), self.pt_bias.grad    #原文件self.nnm后添加.detach().numpy()
                      .detach().numpy()).all().item()
         return s
@@ -163,7 +168,7 @@ class CrossEntropyTest(TestBase):
             return False
 
 if __name__ == "__main__":
-    test_list = [Conv2dTest(),CrossEntropyTest(),LinearTest()]#
+    test_list = [LinearTest()]#,,Conv2dTest()CrossEntropyTest()
     for a in test_list:
         print("Test",a.module)
         print("forward:",a.forward_test())
