@@ -31,7 +31,7 @@ num_epochs = 5
 BATCH_SIZE = 100
 learning_rate = 0.001
 moment = 0
-
+optimizer_gap = 100
 # 读取图像数据集
 train_data = torchvision.datasets.MNIST(root ='./mnist',train = True,transform=transforms.ToTensor(),download = True )
 train_loader=Data.DataLoader(dataset=train_data, batch_size=BATCH_SIZE, shuffle=True)
@@ -69,7 +69,7 @@ for epoch in range(num_epochs):
         optimizer.step()          #梯度下降
  
         #每执行100次，输出一下当前epoch、loss、accuracy
-        if(step+1) % 100 == 0:
+        if(step+1) % optimizer_gap == 0:
             print('Epoch [%d/%d], Iter[%d/%d] Loss: %.4f' %(epoch+1, num_epochs, step+1, len(train_data)/BATCH_SIZE, loss.item()))
 
 model.eval()  #改为预测模式
