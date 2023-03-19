@@ -23,20 +23,21 @@ class CNN(nn.Module):
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(2))
-        self.layer3 = my.Linear(7*7*32, 10)
+        self.layer3 = my.Linear(7*7*32, 10) 
     def forward(self,x):
         x=self.layer1(x)
         x=self.layer2(x)
         x = x.reshape(x.size(0), -1)  #降维度，才能输入到Linear层
         x=self.layer3(x)
         return x
-time_start=time.time()
-#超参数num_epochs = 5 BATCH_SIZE = 100 learning_rate = 0.001 moment = 0
+time_start0=time.time()
+#超参数num_epochs = 5 BATCH_SIZE = 100 learning_rate = 0.001 moment = 0 
 num_epochs = 1
 BATCH_SIZE = 100
 learning_rate = 0.001
 moment = 0
-optimizer_gap = 5
+
+optimizer_gap = 100
 # 读取图像数据集
 train_data = torchvision.datasets.MNIST(root ='./mnist',train = True,transform=transforms.ToTensor(),download = True )
 train_loader=Data.DataLoader(dataset=train_data, batch_size=BATCH_SIZE, shuffle=True)
@@ -44,10 +45,6 @@ train_loader=Data.DataLoader(dataset=train_data, batch_size=BATCH_SIZE, shuffle=
 
 test_data=torchvision.datasets.MNIST(root='./mnist', train=False,transform=transforms.ToTensor())
 test_loader = torch.utils.data.DataLoader(dataset=test_data, batch_size=1, shuffle=False)
-"""with torch.no_grad(): #取消计算图，避免内存消耗，但是不方便模块化管理
-    images_test=Variable(torch.unsqueeze(test_data.data, dim=1)).type(torch.FloatTensor)[:]/255   
-    labels_test=test_data.targets[:]"""
-
 
 
 #实例化CNN模型，并且将模型导入到cuda核心中
@@ -62,8 +59,9 @@ optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 #开始训练模型
 for epoch in range(num_epochs):
     #加载训练数据
+    time_start1 = time.time()
     for step,(x,y) in enumerate(train_loader):
-        time_start = time.time()
+        time_start2 = time.time()
         #分别得到训练数据的x和y的取值
         ima_train=Variable(x)
         lab_train=Variable(y)
@@ -73,13 +71,16 @@ for epoch in range(num_epochs):
         loss=Lossfunc(output,lab_train) #计算损失值
         loss.backward()         #反向传播
         optimizer.step()          #梯度下降
- 
+        print("一个样本训练花费时间:",time.time()-time_start2,'   loss.item:',loss.item())
         #每执行optimizer_gap次，输出当前epoch、loss、accuracy、花费时间
         if(step+1) % optimizer_gap == 0:
-            time_end = time.time()
-            print('Epoch [%d/%d], Iter[%d/%d] Loss: %.4f time gap %f' %(epoch, num_epochs, step+1, len(train_data)/BATCH_SIZE, loss.item(), time_end-time_start))
-time_end1 = time.time()            
-print('training time: %f' %(time_end1 - time_start))
+            print('Epoch [%d/%d], Iter[%d/%d] Loss: %.4f time gap %f' %(epoch, num_epochs, step+1, len(train_data)/BATCH_SIZE, loss.item(), time.time()-time_start1))
+            time_start1 = time.time()
+
+time_end01 = time.time()    
+print('training time: %f' %(time_end01 - time_start0))
+
+
 model.eval()  #改为预测模式
 correct ,total= 0,0
 for images, labels in test_loader:
@@ -88,5 +89,7 @@ for images, labels in test_loader:
     _, predicted = torch.max(outputs.data, 1)  #按照维度取最大值，返回每一行中最大的元素，且返回索引
     total += labels.size(0)         #labels.size(0) = 100 = batch_size
     correct += (predicted.cpu() == labels).sum()  #计算每次批量处理后，100个测试图像中有多少个预测正确，求和加入correct
-time_end2 = time.time()       
-print('Test accuracy of the model on the 10000 test images: %d %%  , eval time %f' %(100 * correct/total , time_end2 - time_end))
+    
+time_end02 = time.time()       
+
+print('Test accuracy of the model on the 10000 test images: %d %%  , eval time %f' %(100 * correct/total , time_end02 - time_end01))

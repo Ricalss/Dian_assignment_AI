@@ -45,45 +45,44 @@ class Conv2d(_ConvNd):
         #padding 
         if self.padding[0]!=0 or self.padding[1]!=0 :
             #dataload将数据转换为带batch的四维tensor
-            self.input_padding = torch.zeros((bs,ch,x+2*pad_n,y+2*pad_n))
-            self.input_padding[:, :, pad_n:x+pad_n,pad_n:y+pad_n] = input
+            input_padding = torch.zeros((bs,ch,x+2*pad_n,y+2*pad_n))
+            input_padding[:, :, pad_n:x+pad_n,pad_n:y+pad_n] = input
         else :
-            self.input_padding = input
+            input_padding = input
         
         #参数
         kn = kernel.size(0)#卷积核个数，输出通道数
         ks = kernel.size(2)#卷积核的尺寸
-        dim2 = int((self.input_padding.size(2)-ks)/self.stride[0]+1)#输出的高
-        dim3 = int((self.input_padding.size(3)-ks)/self.stride[1]+1)#输出的宽
+        dim2 = int((input_padding.size(2)-ks)/self.stride[0]+1)#输出的高
+        dim3 = int((input_padding.size(3)-ks)/self.stride[1]+1)#输出的宽
         k_elems = ch*ks*ks  #一个卷积核中元素个数
         lens = k_elems*dim2*dim3   #二维矩阵化时，行向量的长度
         
         #kernel降维---->(kn, ch*ks*ks)
-        self.kernel_2d = kernel.reshape(kn, k_elems)
-        self.kernel_mat = torch.cat(tuple(self.kernel_2d for i in range(dim2*dim3)),1)#延长二维矩阵
-        #self.kernel_mat = self.kernel_2d.expand(-1,k_elems)不可行，只能用于维度为1的轴
+        kernel_2d = kernel.reshape(kn, k_elems)  #1,
+        self.kernel_mat = torch.cat(tuple(kernel_2d for i in range(dim2*dim3)),1)#延长二维矩阵
+        """kernel_2d = kernel.reshape(kn, 1, k_elems)  #1
+        #self.kernel_mat = kernel_2d.expand(-1, dim2*dim3, -1).reshape(kn, lens)"""#效果不如上式
         
-        #self.input_padding降维---->(bs, dim2*dim3*ch*ks*ks) 是否有更好
+        #input_padding降维---->(bs, dim2*dim3*ch*ks*ks) 
         self.pad_mat = torch.zeros(bs, lens)
-        for b_s in range(bs):
-            for i in range(dim2*dim3):
-                n3 = i % dim3
-                n2 = int(i / dim3)
-                self.pad_mat[b_s,i*k_elems:i*k_elems+k_elems] = self.input_padding[b_s,:,n2:n2+ks,n3:n3+ks].flatten()
-                
+        for i in range(dim2*dim3):
+            n3 = i % dim3
+            n2 = int(i / dim3)
+            self.pad_mat[:,i*k_elems:i*k_elems+k_elems] = input_padding[:,:,n2:n2+ks,n3:n3+ks].reshape(bs,k_elems)
+            
         #compute----self.outoutput----->(bs, kn, dim2 ,dim3)
         self.output = torch.zeros(bs, kn, dim2, dim3)
         bias_3dim = self.bias.reshape(kn,1, 1)
         for b_s in range(bs):   #for k_n in range(kn):取消该循环，可以在外定义bias，使得可以广播相加
-            self.mid_output = (self.kernel_mat*self.pad_mat[b_s]).reshape(kn,dim2,dim3,k_elems)   #可以合并
-            self.output[b_s,:,:,:] = torch.sum(self.mid_output,dim=-1)+bias_3dim
+            mid_output = (self.kernel_mat*self.pad_mat[b_s]).reshape(kn,dim2,dim3,k_elems)   #可以合并
+            self.output[b_s,:,:,:] = torch.sum(mid_output,dim=-1)+bias_3dim
             
             
         #self.output = torch.matmul(self.kernel_mat, self.pad_mat.T).T 彻底的错误
         #matmul可广播
         #-----------------------------------------------------------------------------------------------------------------------------
-        #time_end = time.time()
-        #print(time_end - time_start)
+        #print(time.time() - time_start)
         return self.output
     
     def forward(self, input: Tensor):
@@ -101,12 +100,13 @@ class Conv2d(_ConvNd):
         ch = self.weight.size(1)
         ks = self.weight.size(2)
         bs = self.input.size(0)
-        dim2 = int((self.input_padding.size(2)-ks)/self.stride[0]+1)
-        dim3 = int((self.input_padding.size(3)-ks)/self.stride[1]+1)
+        x ,y = self.input.size(2), self.input.size(3)
+        pad_n =self.padding[0]   #默认为正方形的图片
+        dim2 = int((x+2*pad_n-ks)/self.stride[0]+1)
+        dim3 = int((y+2*pad_n-ks)/self.stride[1]+1)
         k_elems = ch*ks*ks
         lens = k_elems*dim2*dim3
-        pad_n =self.padding[0]   #默认为正方形的图片
-        x ,y = self.input.size(2), self.input.size(3)
+        
         
         #bias.backward()
         self.bias.grad = torch.zeros_like(self.bias)
@@ -118,22 +118,22 @@ class Conv2d(_ConvNd):
         
         #weight.backward()    weight就是kernel
         self.weight.grad = torch.zeros_like(self.weight)
-        for k_n in range(kn):
-            self.weight.grad[k_n] = torch.sum((ones_3dim[:,k_n,:]*self.pad_mat).reshape(-1, k_elems), dim=0).reshape(ch,ks,ks)
+        '''for k_n in range(kn):
+            self.weight.grad[k_n] = torch.sum((ones_3dim[:,k_n,:]*self.pad_mat).reshape(-1, k_elems), dim=0).reshape(ch,ks,ks)'''
+        self.weight.grad = torch.sum((ones_3dim*self.pad_mat.reshape(bs, 1, lens)).reshape(bs, kn, dim2*dim3, k_elems), dim=[0,2]).reshape(kn,ch,ks,ks)
         
         #input.backward()
-        self.pad_grad = torch.zeros_like(self.input_padding)
+        pad_grad = torch.zeros(bs, ch, x+2*pad_n, y+2*pad_n)
         #mid_grad = torch.zeros_like(self.pad_mat)
         mid_grad = torch.sum(ones_3dim*self.kernel_mat,dim=1)  #(bs,lens)
         for i in range(dim2*dim3):
             n3 = i % dim3
             n2 = int(i / dim3)
-            self.pad_grad[:, :, n2:n2+ks, n3:n3+ks] += mid_grad[:, i*k_elems:i*k_elems+k_elems].reshape(bs,ch,ks,ks) 
-        self.input.grad = self.pad_grad[:, :, pad_n:x+pad_n, pad_n:y+pad_n]
+            pad_grad[:, :, n2:n2+ks, n3:n3+ks] += mid_grad[:, i*k_elems:i*k_elems+k_elems].reshape(bs,ch,ks,ks) 
+        self.input.grad = pad_grad[:, :, pad_n:x+pad_n, pad_n:y+pad_n]
         
         #------------------------------------------------------------------------------------------------------------------------------
-        #time_end = time.time()
-        #print(time_end - time_start)
+        #print(time.time() - time_start)
         return self.input.grad
     
 class Linear(Module):
@@ -161,7 +161,7 @@ class Linear(Module):
         #------------------------------------------------------------------------------------------------------
         
         self.input = input
-        self.output = torch.mm(input,self.weight.T)+self.bias
+        self.output = torch.mm(input, self.weight.T)+self.bias
         
         #------------------------------------------------------------------------------------------------------
         #time_end = time.time()
@@ -213,8 +213,7 @@ class CrossEntropyLoss():
         
          
         #------------------------------------------------------------------------------------------------------
-        #time_end = time.time()
-        #print(time_end - time_start)
+        #print(time.time() - time_start)
         return self.output
     def backward(self):
         '''TODO'''
@@ -229,6 +228,5 @@ class CrossEntropyLoss():
         self.input.grad = self.input.grad*vec_bs
         
         #------------------------------------------------------------------------------------------------------
-        #time_end = time.time()
-        #print(time_end - time_start)
+        #print(time.time() - time_start)
         return self.input.grad
