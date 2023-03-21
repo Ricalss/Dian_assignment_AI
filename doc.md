@@ -38,7 +38,7 @@ CrossEntropyLoss()--->Loss
 ## 反向传播：上述过程逆向求出各计算过程的当地梯度，再利用链式法则计算出所有参数的梯度，此即为反向传播
 
 # 训练细节
-BATCH_SIZE = 1000   学习率learning_rate = 0.001   训练次数num_epochs = 1 #因为数据计算比较慢，没有选择太大训练次数。
+BATCH_SIZE = 100   学习率learning_rate = 0.001   训练次数num_epochs = 1 #因为数据计算比较慢，没有选择太大训练次数。
 
 cnn-self中采用了nn.ReLU6()处理线性层输出的数据，保证最大值为6，防止数据爆炸。layer1/2也采用nn.BatchNorm2d()函数进行规范化防止数据爆炸。（nan、inf）
 

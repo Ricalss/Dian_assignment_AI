@@ -205,10 +205,10 @@ class CrossEntropyLoss():
         self.label_exp = torch.zeros(self.Bs, 1) #标签值(bs,1)
         for bs in range(self.Bs):
             self.label_exp[bs][0] = self.out_exp[bs][target[bs]]
-        self.label_P = self.label_exp / ((self.exp_sum))
+        self.label_P = self.label_exp / (self.exp_sum)+self.num 
         
         #log -1 NLLloss output1(bs,labs) ---> self.output = scalar
-        self.output = -sum(torch.log(self.label_P+self.num+self.num)) / self.Bs 
+        self.output = -sum(torch.log(self.label_P+self.num)) / self.Bs 
         
          
         #------------------------------------------------------------------------------------------------------
@@ -228,7 +228,7 @@ class CrossEntropyLoss():
         
         self.input.grad = self.out_exp/(self.exp_sum+self.num)/self.Bs +self.num
         for b_s in range(self.Bs):
-            self.input.grad[b_s][self.target[b_s]] -= 1/self.Bs+self.num
+            self.input.grad[b_s][self.target[b_s]] -= 1/self.Bs
         #------------------------------------------------------------------------------------------------------
         #print(time.time() - time_start)
         return self.input.grad

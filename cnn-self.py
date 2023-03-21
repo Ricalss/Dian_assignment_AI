@@ -32,7 +32,7 @@ class CNN(nn.Module):
         return x
 time_start0=time.time()
 #超参数num_epochs = 5 BATCH_SIZE = 100 learning_rate = 0.001 moment = 0 
-num_epochs = 2
+num_epochs = 1
 BATCH_SIZE = 100
 learning_rate = 0.001
 moment = 0
@@ -54,14 +54,14 @@ model = CNN()
 #损失函数 交叉熵 
 Lossfunc = my.CrossEntropyLoss()  
 #优化函数有Adam和SGD常用，这里选择SGD
-optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate) 
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) 
 
 #开始训练模型
 for epoch in range(num_epochs):
     #加载训练数据
     time_start1 = time.time()
     for step,(x,y) in enumerate(train_loader):
-        time_start2 = time.time()
+        #time_start2 = time.time()
         #分别得到训练数据的x和y的取值
         ima_train=Variable(x)
         lab_train=Variable(y)
@@ -71,10 +71,10 @@ for epoch in range(num_epochs):
         loss=Lossfunc(output,lab_train) #计算损失值
         loss.backward()         #反向传播
         optimizer.step()          #梯度下降
-        print("一个样本训练花费时间:",time.time()-time_start2,'   loss.item:',loss.item())
+        #print("一个样本训练花费时间:",time.time()-time_start2,'   loss.item:',loss.item())
         #每执行optimizer_gap次，输出当前epoch、loss、accuracy、花费时间
         if(step+1) % optimizer_gap == 0:
-            print('Epoch [%d/%d], Iter[%d/%d] Loss: %.4f time gap %f' %(epoch, num_epochs, step+1, len(train_data)/BATCH_SIZE, loss.item(), time.time()-time_start1))
+            print('Epoch [%d/%d], Iter[%d/%d] Loss: %.4f  %dtimes gap    %f' %(epoch, num_epochs, step+1, len(train_data)/BATCH_SIZE, loss.item(), optimizer_gap,time.time()-time_start1))
             time_start1 = time.time()
 
 time_end01 = time.time()    
