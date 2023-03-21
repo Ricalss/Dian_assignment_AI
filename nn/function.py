@@ -200,7 +200,7 @@ class CrossEntropyLoss():
         self.Bs = input.size(0)
         
         #softmax  input(bs, labs) ---> output1(bs, labs)
-        self.out_exp = torch.exp(input) #空间换时间
+        self.out_exp = torch.exp(input)+self.num #空间换时间  只加此处num可行
         self.exp_sum = (torch.sum(self.out_exp, dim=1)).reshape(self.Bs, 1)
         self.label_exp = torch.zeros(self.Bs, 1) #标签值(bs,1)
         for bs in range(self.Bs):
